@@ -1,3 +1,4 @@
+#include <limits>
 #include "common.h"
 #include "formula.h"
 #include "test_runner_p.h"
@@ -24,9 +25,6 @@ inline std::ostream& operator<<(std::ostream& output, const CellInterface::Value
 }
 
 namespace {
-std::string ToString(FormulaError::Category category) {
-    return std::string(FormulaError(category).ToString());
-}
 
 void TestPositionAndStringConversion() {
     auto testSingle = [](Position pos, std::string_view str) {
@@ -250,7 +248,7 @@ void TestErrorDiv0() {
 void TestEmptyCellTreatedAsZero() {
     auto sheet = CreateSheet();
     sheet->SetCell("A1"_pos, "=B2");
-    ASSERT_EQUAL(sheet->GetCell("A1"_pos)->GetValue(), CellInterface::Value(0));
+    ASSERT_EQUAL(sheet->GetCell("A1"_pos)->GetValue(), CellInterface::Value(0.0));
 }
 
 void TestFormulaInvalidPosition() {
@@ -349,7 +347,29 @@ void TestCellCircularReferences() {
 }
 }  // namespace
 
+void PrintSheet(const std::unique_ptr<SheetInterface>& sheet) {
+    std::cout << sheet->GetPrintableSize() << std::endl;
+    sheet->PrintTexts(std::cout);
+    std::cout << std::endl;
+    sheet->PrintValues(std::cout);
+    std::cout << std::endl;
+}
+
 int main() {
+    auto sheet = CreateSheet();
+    sheet->SetCell("A1"_pos, "=(1+2)*3");
+    sheet->SetCell("B1"_pos, "=1+(2*3)");
+
+    sheet->SetCell("A2"_pos, "some");
+    sheet->SetCell("B2"_pos, "text");
+    sheet->SetCell("C2"_pos, "here");
+
+    sheet->SetCell("C3"_pos, "'and'");
+    sheet->SetCell("D3"_pos, "'here");
+
+    sheet->SetCell("B5"_pos, "=1/0");
+
+    PrintSheet(sheet);
     TestRunner tr;
     RUN_TEST(tr, TestPositionAndStringConversion);
     RUN_TEST(tr, TestPositionToStringInvalid);
@@ -370,4 +390,5 @@ int main() {
     RUN_TEST(tr, TestCellReferences);
     RUN_TEST(tr, TestFormulaIncorrect);
     RUN_TEST(tr, TestCellCircularReferences);
+    return 0;
 }
