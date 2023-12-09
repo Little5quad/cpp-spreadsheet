@@ -165,22 +165,12 @@ void Cell::Set(std::string text) {
 
     r_nodes_.clear();
     
-    TransferCells();/*
-    for (const auto& pos : impl_->GetReferencedCells()) {
-        Cell* outgoing = sheet_.GetCellPtr(pos);
-        if (!outgoing) {
-            sheet_.SetCell(pos, "");
-            outgoing = sheet_.GetCellPtr(pos);
-        }
-        r_nodes_.insert(outgoing);
-        outgoing->l_nodes_.insert(this);
-    }*/
+    TransferCells();
 
     InvalidateCacheRecursive(true);
 }
 
 void Cell::Clear() {
-    //impl_ = std::make_unique<EmptyImpl>();
     Set("");
 }
 
