@@ -19,19 +19,28 @@ public:
 
 class Cell::EmptyImpl : public Impl {
 public:
-    Value GetValue() const override { return ""; }
-    std::string GetText() const override { return ""; }
+    Value GetValue() const override { 
+        return ""; 
+    }
+    
+    std::string GetText() const override { 
+        return ""; 
+    }
 };
 
 class Cell::TextImpl : public Impl {
 public:
     TextImpl(std::string text) 
         : text_(std::move(text)) {
-        if (text_.empty()) { throw std::logic_error(""); }
+        if (text_.empty()) { 
+            throw std::logic_error("text is empty"); 
+        }
     }
 
     Value GetValue() const override {
-        if (text_[0] == ESCAPE_SIGN) return text_.substr(1);
+        if (text_[0] == ESCAPE_SIGN) {
+            return text_.substr(1);
+        } 
         return text_;
     }
 
@@ -47,7 +56,9 @@ class Cell::FormulaImpl : public Impl {
 public:
     explicit FormulaImpl(std::string expression, const SheetInterface& sheet)
         : sheet_(sheet) {
-        if (expression.empty() || expression[0] != FORMULA_SIGN) throw std::logic_error("");
+        if (expression.empty() || expression[0] != FORMULA_SIGN) {
+            throw std::logic_error("expression is empty");
+        }
 
         formula_ptr_ = ParseFormula(expression.substr(1));
     }
@@ -84,7 +95,9 @@ private:
 };
 
 bool Cell::WouldIntroduceCircularDependency(const Impl& new_impl) const {
-    if (new_impl.GetReferencedCells().empty()) return false;
+    if (new_impl.GetReferencedCells().empty()) {
+        return false;
+    }
 
     std::unordered_set<const Cell*> referenced;
     for (const auto& pos : new_impl.GetReferencedCells()) {
@@ -99,10 +112,14 @@ bool Cell::WouldIntroduceCircularDependency(const Impl& new_impl) const {
         to_visit.pop();
         visited.insert(current);
 
-        if (referenced.find(current) != referenced.end()) return true;
+        if (referenced.find(current) != referenced.end()) {
+            return true;
+        }
 
         for (const Cell* incoming : current->l_nodes_) {
-            if (visited.find(incoming) == visited.end()) to_visit.push(incoming);
+            if (visited.find(incoming) == visited.end()) {
+                to_visit.push(incoming);
+            }
         }
     }
 
@@ -127,11 +144,19 @@ Cell::~Cell() {}
 void Cell::Set(std::string text) {
     std::unique_ptr<Impl> impl;
 
-    if (text.empty()) impl = std::make_unique<EmptyImpl>();
-    else if (text.size() > 1 && text[0] == FORMULA_SIGN) impl = std::make_unique<FormulaImpl>(std::move(text), sheet_);
-    else impl = std::make_unique<TextImpl>(std::move(text));
+    if (text.empty()) {
+        impl = std::make_unique<EmptyImpl>();
+    }
+    else if (text.size() > 1 && text[0] == FORMULA_SIGN) {
+        impl = std::make_unique<FormulaImpl>(std::move(text), sheet_);
+    }
+    else {
+        impl = std::make_unique<TextImpl>(std::move(text));
+    }
 
-    if (WouldIntroduceCircularDependency(*impl)) throw CircularDependencyException("");
+    if (WouldIntroduceCircularDependency(*impl)) {
+        throw CircularDependencyException("");
+    }
     impl_ = std::move(impl);
 
     for (Cell* outgoing : r_nodes_) {
@@ -139,7 +164,8 @@ void Cell::Set(std::string text) {
     }
 
     r_nodes_.clear();
-
+    
+    TransferCells();/*
     for (const auto& pos : impl_->GetReferencedCells()) {
         Cell* outgoing = sheet_.GetCellPtr(pos);
         if (!outgoing) {
@@ -148,13 +174,14 @@ void Cell::Set(std::string text) {
         }
         r_nodes_.insert(outgoing);
         outgoing->l_nodes_.insert(this);
-    }
+    }*/
 
     InvalidateCacheRecursive(true);
 }
 
 void Cell::Clear() {
-    impl_ = std::make_unique<EmptyImpl>();
+    //impl_ = std::make_unique<EmptyImpl>();
+    Set("");
 }
 
 Cell::Value Cell::GetValue() const {
@@ -171,4 +198,16 @@ std::vector<Position> Cell::GetReferencedCells() const {
 
 bool Cell::IsReferenced() const {
     return !l_nodes_.empty();
+}
+
+void Cell::TransferCells() {
+    for (const auto& pos : impl_->GetReferencedCells()) {
+        Cell* outgoing = sheet_.GetCellPtr(pos);
+        if (!outgoing) {
+            sheet_.SetCell(pos, "");
+            outgoing = sheet_.GetCellPtr(pos);
+        }
+        r_nodes_.insert(outgoing);
+        outgoing->l_nodes_.insert(this);
+    }
 }

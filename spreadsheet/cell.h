@@ -29,6 +29,7 @@ private:
     class FormulaImpl;
     bool WouldIntroduceCircularDependency(const Impl& new_impl) const;
     void InvalidateCacheRecursive(bool force = false);
+    void TransferCells();
 
     std::unique_ptr<Impl> impl_;
 
